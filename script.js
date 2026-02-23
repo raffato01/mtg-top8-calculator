@@ -16,6 +16,7 @@
     var winsInput = document.getElementById('wins');
     var lossesInput = document.getElementById('losses');
     var drawsInput = document.getElementById('draws');
+    var recordInputs = document.getElementById('record-inputs');
     var recordDisplay = document.getElementById('record-display');
     var pointsDisplay = document.getElementById('points-display');
     var roundsPlayedDisplay = document.getElementById('rounds-played-display');
@@ -29,8 +30,14 @@
     var strategyTitle = document.getElementById('strategy-title');
     var strategySubtitle = document.getElementById('strategy-subtitle');
     var strategyVerdict = document.getElementById('strategy-verdict');
+    var omwDisplay = document.getElementById('omw-display');
     var scenariosDescription = document.getElementById('scenarios-description');
     var scenariosBody = document.getElementById('scenarios-body');
+    var roundTracker = document.getElementById('round-tracker');
+    var roundTrackerGrid = document.getElementById('round-tracker-grid');
+
+    // Round tracker state: array of 'W', 'L', 'D', or null for each round
+    var roundResults = [];
 
     // =====================
     // Tournament Math
@@ -56,10 +63,63 @@
         return records;
     }
 
+    // =====================
+    // OMW% Estimation
+    // =====================
+
     /**
-     * Estimate the probability of making Top 8 for a given final record
+     * Estimate OMW% from round-by-round results.
+     * For each round, we estimate the opponent's final match-win %
+     * based on the player's cumulative record at that point (pairing bracket).
+     * Opponents faced at higher brackets tend to finish with higher win rates.
      */
-    function estimateTop8Probability(wins, losses, draws, totalRounds, numPlayers) {
+    function estimateOMW(results, totalRounds) {
+        if (!results || results.length === 0) return null;
+
+        var filledResults = results.filter(function (r) { return r !== null; });
+        if (filledResults.length === 0) return null;
+
+        var cumWins = 0;
+        var cumLosses = 0;
+        var opponentMWs = [];
+
+        for (var i = 0; i < results.length; i++) {
+            if (results[i] === null) continue;
+
+            // Estimate opponent's final match-win % based on pairing bracket
+            // At record (cumWins - cumLosses), paired against similar record
+            var bracketStrength = 0.5 + (cumWins - cumLosses) / (2 * totalRounds);
+
+            var opponentMW;
+            if (results[i] === 'W') {
+                // We won: opponent lost this match, slight penalty to their final record
+                opponentMW = bracketStrength - 0.04;
+                cumWins++;
+            } else if (results[i] === 'L') {
+                // We lost: opponent won this match, slight bonus to their final record
+                opponentMW = bracketStrength + 0.04;
+                cumLosses++;
+            } else {
+                // Draw: neutral
+                opponentMW = bracketStrength;
+            }
+
+            // OMW% minimum floor is 33% per WotC rules
+            opponentMWs.push(Math.max(0.33, Math.min(1, opponentMW)));
+        }
+
+        var sum = 0;
+        for (var j = 0; j < opponentMWs.length; j++) {
+            sum += opponentMWs[j];
+        }
+        return sum / opponentMWs.length;
+    }
+
+    /**
+     * Estimate the probability of making Top 8 for a given final record.
+     * Optional omwEstimate adjusts probability at the tiebreaker threshold.
+     */
+    function estimateTop8Probability(wins, losses, draws, totalRounds, numPlayers, omwEstimate) {
         var points = getMatchPoints(wins, draws);
 
         if (numPlayers <= 8) return 100;
@@ -85,16 +145,47 @@
 
         var diff = points - thresholdPoints;
 
-        if (diff >= 6) return 100;
-        if (diff >= 3) return 98;
-        if (diff >= 1) return 92;
-        if (diff === 0) return 75;
-        if (diff === -1) return 50;
-        if (diff === -2) return 25;
-        if (diff === -3) return 10;
-        if (diff === -4) return 3;
-        if (diff === -5) return 1;
-        return 0;
+        // Base probabilities
+        var baseProb;
+        if (diff >= 6) baseProb = 100;
+        else if (diff >= 3) baseProb = 98;
+        else if (diff >= 1) baseProb = 92;
+        else if (diff === 0) baseProb = 75;
+        else if (diff === -1) baseProb = 50;
+        else if (diff === -2) baseProb = 25;
+        else if (diff === -3) baseProb = 10;
+        else if (diff === -4) baseProb = 3;
+        else if (diff === -5) baseProb = 1;
+        else baseProb = 0;
+
+        // Apply OMW% adjustment in the tiebreaker-sensitive zone
+        if (omwEstimate !== undefined && omwEstimate !== null && diff >= -2 && diff <= 0) {
+            var adjustment = 0;
+            if (omwEstimate > 0.55) {
+                // Good tiebreakers: boost probability
+                if (diff === 0) adjustment = 10;
+                else if (diff === -1) adjustment = 10;
+                else adjustment = 5;
+            } else if (omwEstimate < 0.40) {
+                // Poor tiebreakers: reduce probability
+                if (diff === 0) adjustment = -15;
+                else if (diff === -1) adjustment = -10;
+                else adjustment = -8;
+            } else if (omwEstimate > 0.50) {
+                // Slightly above average
+                if (diff === 0) adjustment = 5;
+                else if (diff === -1) adjustment = 4;
+                else adjustment = 2;
+            } else if (omwEstimate < 0.45) {
+                // Slightly below average
+                if (diff === 0) adjustment = -8;
+                else if (diff === -1) adjustment = -5;
+                else adjustment = -3;
+            }
+            baseProb = Math.max(0, Math.min(100, baseProb + adjustment));
+        }
+
+        return baseProb;
     }
 
     function getProbClass(prob) {
@@ -153,12 +244,38 @@
         } else {
             roundsDisplay.style.display = 'none';
         }
+        // Rebuild round tracker if in progress mode
+        if (inProgressToggle.checked) {
+            buildRoundTracker();
+        }
+    }
+
+    function getRecordFromTracker() {
+        var w = 0, l = 0, d = 0;
+        for (var i = 0; i < roundResults.length; i++) {
+            if (roundResults[i] === 'W') w++;
+            else if (roundResults[i] === 'L') l++;
+            else if (roundResults[i] === 'D') d++;
+        }
+        return { wins: w, losses: l, draws: d };
     }
 
     function updateRecordDisplay() {
-        var w = parseInt(winsInput.value) || 0;
-        var l = parseInt(lossesInput.value) || 0;
-        var d = parseInt(drawsInput.value) || 0;
+        var w, l, d;
+        if (inProgressToggle.checked) {
+            var rec = getRecordFromTracker();
+            w = rec.wins;
+            l = rec.losses;
+            d = rec.draws;
+            // Sync hidden inputs for compatibility
+            winsInput.value = w;
+            lossesInput.value = l;
+            drawsInput.value = d;
+        } else {
+            w = parseInt(winsInput.value) || 0;
+            l = parseInt(lossesInput.value) || 0;
+            d = parseInt(drawsInput.value) || 0;
+        }
         var pts = getMatchPoints(w, d);
         var played = w + l + d;
         recordDisplay.textContent = w + '-' + l + '-' + d;
@@ -172,7 +289,97 @@
         }
     }
 
+    // =====================
+    // Round Tracker
+    // =====================
+
+    function buildRoundTracker() {
+        var players = parseInt(playersInput.value) || 0;
+        if (players < 2) return;
+        var totalRounds = getRounds(players);
+
+        // Resize roundResults array
+        while (roundResults.length < totalRounds) roundResults.push(null);
+        while (roundResults.length > totalRounds) roundResults.pop();
+
+        roundTrackerGrid.innerHTML = '';
+
+        for (var r = 0; r < totalRounds; r++) {
+            var row = document.createElement('div');
+            row.className = 'round-row';
+            if (roundResults[r] !== null) row.classList.add('round-filled');
+
+            // Check if this round should be enabled (sequential: only if previous are filled)
+            var enabled = (r === 0 || roundResults[r - 1] !== null || roundResults[r] !== null);
+            if (!enabled) row.classList.add('round-disabled');
+
+            var label = document.createElement('span');
+            label.className = 'round-number';
+            label.textContent = 'R' + (r + 1);
+
+            var buttons = document.createElement('div');
+            buttons.className = 'round-buttons';
+
+            var results = ['W', 'L', 'D'];
+            var classes = ['selected-win', 'selected-loss', 'selected-draw'];
+
+            for (var b = 0; b < results.length; b++) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'round-btn';
+                btn.textContent = results[b];
+                btn.setAttribute('data-round', r);
+                btn.setAttribute('data-result', results[b]);
+                if (roundResults[r] === results[b]) {
+                    btn.classList.add(classes[b]);
+                }
+                btn.addEventListener('click', onRoundBtnClick);
+                buttons.appendChild(btn);
+            }
+
+            // Clear button
+            var clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'round-btn-clear';
+            clearBtn.textContent = 'clear';
+            clearBtn.setAttribute('data-round', r);
+            clearBtn.addEventListener('click', onRoundClear);
+
+            row.appendChild(label);
+            row.appendChild(buttons);
+            if (roundResults[r] !== null) row.appendChild(clearBtn);
+
+            roundTrackerGrid.appendChild(row);
+        }
+    }
+
+    function onRoundBtnClick(e) {
+        var round = parseInt(e.target.getAttribute('data-round'));
+        var result = e.target.getAttribute('data-result');
+        roundResults[round] = result;
+        buildRoundTracker();
+        updateRecordDisplay();
+    }
+
+    function onRoundClear(e) {
+        var round = parseInt(e.target.getAttribute('data-round'));
+        // Clear this round and all subsequent rounds
+        for (var i = round; i < roundResults.length; i++) {
+            roundResults[i] = null;
+        }
+        buildRoundTracker();
+        updateRecordDisplay();
+    }
+
     function onToggleChange() {
+        if (inProgressToggle.checked) {
+            recordInputs.classList.add('hidden');
+            roundTracker.classList.remove('hidden');
+            buildRoundTracker();
+        } else {
+            recordInputs.classList.remove('hidden');
+            roundTracker.classList.add('hidden');
+        }
         updateRecordDisplay();
     }
 
@@ -243,24 +450,27 @@
             var remaining = totalRounds - roundsPlayed;
             strategySection.classList.remove('hidden');
 
+            // Calculate OMW% from round tracker
+            var omwEstimate = estimateOMW(roundResults, totalRounds);
+
             // Analyze the "draw all remaining" scenario
             var drawAllFinalW = currentWins;
             var drawAllFinalL = currentLosses;
             var drawAllFinalD = currentDraws + remaining;
-            var drawAllProb = estimateTop8Probability(drawAllFinalW, drawAllFinalL, drawAllFinalD, totalRounds, numPlayers);
+            var drawAllProb = estimateTop8Probability(drawAllFinalW, drawAllFinalL, drawAllFinalD, totalRounds, numPlayers, omwEstimate);
 
             // Analyze the "win all remaining" scenario
             var winAllFinalW = currentWins + remaining;
             var winAllFinalL = currentLosses;
             var winAllFinalD = currentDraws;
-            var winAllProb = estimateTop8Probability(winAllFinalW, winAllFinalL, winAllFinalD, totalRounds, numPlayers);
+            var winAllProb = estimateTop8Probability(winAllFinalW, winAllFinalL, winAllFinalD, totalRounds, numPlayers, omwEstimate);
 
             // Find minimum wins needed for safe Top 8 (>= 75%)
             var minWinsNeeded = -1;
             for (var testW = 0; testW <= remaining; testW++) {
                 var testDraws = remaining - testW;
                 var testProb = estimateTop8Probability(
-                    currentWins + testW, currentLosses, currentDraws + testDraws, totalRounds, numPlayers
+                    currentWins + testW, currentLosses, currentDraws + testDraws, totalRounds, numPlayers, omwEstimate
                 );
                 if (testProb >= 75) {
                     minWinsNeeded = testW;
@@ -270,8 +480,19 @@
 
             // Set strategy card content
             strategyTitle.textContent = 'Current: ' + currentWins + '-' + currentLosses + '-' + currentDraws +
-                ' (' + currentPoints + ' pts) — ' + remaining + ' round' + (remaining !== 1 ? 's' : '') + ' left';
+                ' (' + currentPoints + ' pts) \u2014 ' + remaining + ' round' + (remaining !== 1 ? 's' : '') + ' left';
             strategySubtitle.textContent = 'Round ' + roundsPlayed + ' of ' + totalRounds + ' completed';
+
+            // Show OMW% estimate
+            if (omwEstimate !== null) {
+                var omwPercent = Math.round(omwEstimate * 100);
+                var omwClass = omwEstimate > 0.50 ? 'omw-good' : (omwEstimate < 0.45 ? 'omw-bad' : 'omw-average');
+                omwDisplay.innerHTML = 'Estimated OMW%: <span class="omw-value ' + omwClass + '">' + omwPercent + '%</span>' +
+                    (omwEstimate > 0.50 ? ' \u2014 good tiebreakers' : (omwEstimate < 0.45 ? ' \u2014 weak tiebreakers' : ' \u2014 average tiebreakers'));
+                omwDisplay.classList.remove('hidden');
+            } else {
+                omwDisplay.classList.add('hidden');
+            }
 
             if (drawAllProb >= 90) {
                 strategyVerdict.textContent = 'You can safely draw all ' + remaining + ' remaining round' + (remaining !== 1 ? 's' : '') +
@@ -279,7 +500,7 @@
                     ' gives you ' + drawAllProb + '% probability of Top 8.';
                 strategyVerdict.className = 'strategy-verdict strategy-draw';
             } else if (drawAllProb >= 60) {
-                strategyVerdict.textContent = 'Drawing all remaining rounds gives you ' + drawAllProb + '% chance — likely enough, ' +
+                strategyVerdict.textContent = 'Drawing all remaining rounds gives you ' + drawAllProb + '% chance \u2014 likely enough, ' +
                     'but winning would make it safer. Consider your tiebreakers.';
                 strategyVerdict.className = 'strategy-verdict strategy-mixed';
             } else if (minWinsNeeded > 0 && minWinsNeeded <= remaining) {
@@ -306,7 +527,7 @@
                 var finalL = currentLosses + sc.extraLosses;
                 var finalD = currentDraws + sc.extraDraws;
                 var pts = getMatchPoints(finalW, finalD);
-                var prob = estimateTop8Probability(finalW, finalL, finalD, totalRounds, numPlayers);
+                var prob = estimateTop8Probability(finalW, finalL, finalD, totalRounds, numPlayers, omwEstimate);
                 var probClass = getProbClass(prob);
                 var status = getStatusInfo(prob);
 

@@ -58,7 +58,15 @@
                     know whether to play or draw</p>
             </div>
 
-            <div class="record-inputs">
+            <!-- Round-by-Round Tracker (shown in in-progress mode) -->
+            <div class="round-tracker hidden" id="round-tracker">
+                <h3 class="card-title">Round-by-Round Results</h3>
+                <p class="card-description">Click to set each round's result. Order affects tiebreaker estimation.</p>
+                <div class="round-tracker-grid" id="round-tracker-grid"></div>
+            </div>
+
+            <!-- Standard W/L/D inputs (hidden in in-progress mode) -->
+            <div class="record-inputs" id="record-inputs">
                 <div class="input-group record-field">
                     <label class="input-label" for="wins">
                         <span class="record-badge win-badge">W</span> Wins
@@ -108,6 +116,7 @@
                 <div class="strategy-header">
                     <div class="strategy-title" id="strategy-title"></div>
                     <div class="strategy-subtitle" id="strategy-subtitle"></div>
+                    <div class="omw-display hidden" id="omw-display"></div>
                 </div>
                 <div class="strategy-verdict" id="strategy-verdict"></div>
             </div>
