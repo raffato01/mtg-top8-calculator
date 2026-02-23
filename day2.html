@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Day 2 Calculator — Can You Make Day 2?</title>
+    <meta name="description"
+        content="Calculate whether you can make Day 2 in a multi-day Magic: The Gathering tournament based on your current record.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-link">Top 8 Calculator</a>
+        <a href="day2.html" class="nav-link active">Day 2 Calculator</a>
+    </nav>
+
+    <header class="hero">
+        <h1 class="hero-title">MTG <span class="accent">Day 2</span> Calculator</h1>
+        <p class="hero-subtitle">Find out if you can still make Day 2 in a multi-day tournament</p>
+    </header>
+
+    <main class="container">
+        <!-- Input Section -->
+        <section class="input-card" id="input-section">
+            <h2 class="section-title">Tournament Setup</h2>
+
+            <div class="input-row-2">
+                <div class="input-group">
+                    <label class="input-label" for="total-rounds">Total Rounds (Day 1)</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="total-rounds" class="number-input" min="1" max="20" value="8"
+                            placeholder="e.g. 8">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label" for="threshold">Day 2 Threshold (min points)</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="threshold" class="number-input" min="0" max="60" value="18"
+                            placeholder="e.g. 18">
+                    </div>
+                    <div class="threshold-hint" id="threshold-hint">Need 18 points (6-2 or better)</div>
+                </div>
+            </div>
+
+            <h2 class="section-title section-title-sm">Your Current Record</h2>
+
+            <div class="record-inputs">
+                <div class="input-group record-field">
+                    <label class="input-label" for="wins">
+                        <span class="record-badge win-badge">W</span> Wins
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="wins" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+
+                <div class="input-group record-field">
+                    <label class="input-label" for="losses">
+                        <span class="record-badge loss-badge">L</span> Losses
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="losses" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+
+                <div class="input-group record-field">
+                    <label class="input-label" for="draws">
+                        <span class="record-badge draw-badge">D</span> Draws
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="draws" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="current-record" id="current-record">
+                <span class="record-label">Your record:</span>
+                <span class="record-value" id="record-display">0-0-0</span>
+                <span class="record-points" id="points-display">(0 points)</span>
+                <span class="record-rounds" id="rounds-played-display">| Round 0 of 8</span>
+            </div>
+
+            <button class="calculate-btn" id="calculate-btn">
+                Analyze Day 2 Chances
+            </button>
+        </section>
+
+        <!-- Verdict Section -->
+        <section class="results-section hidden" id="results-section">
+            <h2 class="section-title">Day 2 Analysis</h2>
+
+            <!-- Main Verdict Card -->
+            <div class="strategy-card" id="verdict-card">
+                <div class="strategy-header">
+                    <div class="strategy-title" id="verdict-title"></div>
+                    <div class="strategy-subtitle" id="verdict-subtitle"></div>
+                </div>
+                <div class="strategy-verdict" id="verdict-text"></div>
+            </div>
+
+            <!-- Scenarios Table -->
+            <div class="thresholds-card">
+                <h3 class="card-title">All Possible Outcomes</h3>
+                <p class="card-description" id="scenarios-desc"></p>
+                <div class="table-wrapper">
+                    <table class="thresholds-table" id="scenarios-table">
+                        <thead>
+                            <tr>
+                                <th>Remaining</th>
+                                <th>Final Record</th>
+                                <th>Points</th>
+                                <th>vs Threshold</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scenarios-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="info-card">
+                <h3 class="card-title">How it works</h3>
+                <ul class="info-list">
+                    <li><strong>Win</strong> = 3 match points</li>
+                    <li><strong>Draw</strong> = 1 match point</li>
+                    <li><strong>Loss</strong> = 0 match points</li>
+                    <li>Day 2 requires reaching the minimum point threshold after Day 1</li>
+                    <li>Common thresholds: 18 pts (6-2) for 8-round Day 1, 21 pts (7-2) for 9 rounds</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>MTG Day 2 Calculator &mdash; A tool for competitive Magic: The Gathering players</p>
+        <p class="footer-note">Based on standard Swiss tournament point rules (3/1/0).</p>
+    </footer>
+
+    <script src="day2.js"></script>
+</body>
+
+</html>

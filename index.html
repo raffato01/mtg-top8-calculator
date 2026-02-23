@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Top 8 Calculator — Top 8 Probability Estimator</title>
+    <meta name="description"
+        content="Calculate the probability of making Top 8 in Magic: The Gathering Swiss tournaments based on your record.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-link active">Top 8 Calculator</a>
+        <a href="day2.html" class="nav-link">Day 2 Calculator</a>
+    </nav>
+
+    <header class="hero">
+        <h1 class="hero-title">MTG <span class="accent">Top 8</span> Calculator</h1>
+        <p class="hero-subtitle">Estimate your chances of making Top 8 in Magic: The Gathering Swiss tournaments</p>
+    </header>
+
+    <main class="container">
+        <!-- Input Section -->
+        <section class="input-card" id="input-section">
+            <h2 class="section-title">Tournament Data</h2>
+
+            <div class="input-group">
+                <label class="input-label" for="players">Number of Players</label>
+                <div class="input-wrapper">
+                    <input type="number" id="players" class="number-input" min="8" max="10000" value="64"
+                        placeholder="e.g. 64">
+                </div>
+                <div class="rounds-display" id="rounds-display">6 rounds</div>
+            </div>
+
+            <!-- In Progress Toggle -->
+            <div class="toggle-group">
+                <label class="toggle-label" for="in-progress">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="in-progress">
+                        <span class="toggle-slider"></span>
+                    </div>
+                    <span class="toggle-text">Tournament in progress</span>
+                </label>
+                <p class="toggle-hint" id="toggle-hint">Enable this if the tournament is still ongoing and you want to
+                    know whether to play or draw</p>
+            </div>
+
+            <div class="record-inputs">
+                <div class="input-group record-field">
+                    <label class="input-label" for="wins">
+                        <span class="record-badge win-badge">W</span> Wins
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="wins" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+
+                <div class="input-group record-field">
+                    <label class="input-label" for="losses">
+                        <span class="record-badge loss-badge">L</span> Losses
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="losses" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+
+                <div class="input-group record-field">
+                    <label class="input-label" for="draws">
+                        <span class="record-badge draw-badge">D</span> Draws
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="number" id="draws" class="number-input" min="0" max="20" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="current-record" id="current-record">
+                <span class="record-label">Your record:</span>
+                <span class="record-value" id="record-display">0-0-0</span>
+                <span class="record-points" id="points-display">(0 points)</span>
+                <span class="record-rounds hidden" id="rounds-played-display"></span>
+            </div>
+
+            <button class="calculate-btn" id="calculate-btn">
+                Calculate Probability
+            </button>
+        </section>
+
+        <!-- Strategy Section (only shown when tournament in progress) -->
+        <section class="strategy-section hidden" id="strategy-section">
+            <h2 class="section-title">Strategy Analysis</h2>
+
+            <!-- ID Analysis Card -->
+            <div class="strategy-card" id="strategy-card">
+                <div class="strategy-header">
+                    <div class="strategy-title" id="strategy-title"></div>
+                    <div class="strategy-subtitle" id="strategy-subtitle"></div>
+                </div>
+                <div class="strategy-verdict" id="strategy-verdict"></div>
+            </div>
+
+            <!-- Remaining Rounds Scenarios -->
+            <div class="thresholds-card">
+                <h3 class="card-title">Remaining Round Scenarios</h3>
+                <p class="card-description" id="scenarios-description"></p>
+                <div class="table-wrapper">
+                    <table class="thresholds-table" id="scenarios-table">
+                        <thead>
+                            <tr>
+                                <th>Remaining Results</th>
+                                <th>Final Record</th>
+                                <th>Points</th>
+                                <th>Top 8 Probability</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scenarios-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section hidden" id="results-section">
+            <h2 class="section-title">All Thresholds</h2>
+
+            <!-- Summary Card -->
+            <div class="summary-card" id="summary-card">
+                <div class="summary-header">
+                    <div class="summary-record" id="summary-record"></div>
+                    <div class="summary-info" id="summary-info"></div>
+                </div>
+                <div class="summary-verdict" id="summary-verdict"></div>
+            </div>
+
+            <!-- Thresholds Table -->
+            <div class="thresholds-card">
+                <h3 class="card-title">All Tournament Thresholds</h3>
+                <p class="card-description">Estimated probability for every possible final record</p>
+                <div class="table-wrapper">
+                    <table class="thresholds-table" id="thresholds-table">
+                        <thead>
+                            <tr>
+                                <th>Record</th>
+                                <th>Points</th>
+                                <th>Top 8 Probability</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="thresholds-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="info-card">
+                <h3 class="card-title">How it works</h3>
+                <ul class="info-list">
+                    <li><strong>Win</strong> = 3 match points</li>
+                    <li><strong>Draw</strong> = 1 match point</li>
+                    <li><strong>Loss</strong> = 0 match points</li>
+                    <li>Probabilities are estimates based on Swiss tournament math</li>
+                    <li>Tiebreakers (OMW%, GW%, OGW%) can affect the actual result</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>MTG Top 8 Calculator &mdash; A tool for competitive Magic: The Gathering players</p>
+        <p class="footer-note">Probabilities are estimates and do not guarantee results. Based on Swiss tournament
+            mathematics.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
