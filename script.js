@@ -41,6 +41,152 @@
     var roundResults = [];
 
     // =====================
+    // Widget & Quick Actions
+    // =====================
+
+    function getUrlParameter(name) {
+        var url = window.location.search;
+        name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+        var regex = new RegExp("[\\?&]"+name+"=([^&#]*)");
+        var results = regex.exec(url);
+        return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+
+    function quickAddResult(resultType) {
+        // resultType: 'win', 'loss', or 'draw'
+        if (inProgressToggle.checked) {
+            var totalRounds = getRounds(parseInt(playersInput.value) || 64);
+            var currentPlayed = roundResults.filter(r => r !== null).length;
+            
+            if (currentPlayed < totalRounds) {
+                roundResults[currentPlayed] = resultType === 'win' ? 'W' : (resultType === 'loss' ? 'L' : 'D');
+                buildRoundTracker();
+                updateRecordDisplay();
+                calculate();
+                
+                // Show toast notification
+                showToast(resultType.toUpperCase() + ' logged successfully!');
+            }
+        }
+    }
+
+    function showToast(message) {
+        var toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function updateBadge() {
+        // Display current points on app icon (Badging API)
+        if ('setAppBadge' in navigator) {
+            var w = parseInt(winsInput.value) || 0;
+            var d = parseInt(drawsInput.value) || 0;
+            var points = w * 3 + d * 1;
+            
+            if (points > 0) {
+                navigator.setAppBadge(points).catch(err => console.log('Badge API not available'));
+            } else {
+                navigator.clearAppBadge().catch(err => console.log('Badge API not available'));
+            }
+        }
+    }
+
+    function addQuickActionButtons() {
+        // Add quick action buttons to the UI
+        var inProgressSection = document.getElementById('input-section');
+        
+        // Check if buttons already exist
+        if (document.getElementById('quick-actions')) return;
+        
+        var quickActionsDiv = document.createElement('div');
+        quickActionsDiv.id = 'quick-actions';
+        quickActionsDiv.className = 'quick-actions hidden';
+        
+        quickActionsDiv.innerHTML = `
+            <h3 class="card-title">Quick Log Round Result</h3>
+            <div class="quick-action-buttons">
+                <button class="quick-btn quick-btn-win" data-result="win">
+                    <span class="quick-btn-icon">W</span>
+                    <span class="quick-btn-label">Win</span>
+                </button>
+                <button class="quick-btn quick-btn-loss" data-result="loss">
+                    <span class="quick-btn-icon">L</span>
+                    <span class="quick-btn-label">Loss</span>
+                </button>
+                <button class="quick-btn quick-btn-draw" data-result="draw">
+                    <span class="quick-btn-icon">D</span>
+                    <span class="quick-btn-label">Draw</span>
+                </button>
+            </div>
+        `;
+        
+        inProgressSection.appendChild(quickActionsDiv);
+        
+        // Add event listeners to quick action buttons
+        quickActionsDiv.querySelectorAll('.quick-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var resultType = this.getAttribute('data-result');
+                quickAddResult(resultType);
+            });
+        });
+    }
+    const STORAGE_KEY = 'mtg_tournament_data';
+
+    function saveTournamentData() {
+        var data = {
+            players: playersInput.value,
+            prizePosition: prizePositionInput.value,
+            inProgress: inProgressToggle.checked,
+            roundResults: roundResults,
+            wins: winsInput.value,
+            losses: lossesInput.value,
+            draws: drawsInput.value,
+            savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadTournamentData() {
+        var data = localStorage.getItem(STORAGE_KEY);
+        if (!data) return false;
+        
+        try {
+            data = JSON.parse(data);
+            playersInput.value = data.players || 64;
+            prizePositionInput.value = data.prizePosition || 8;
+            inProgressToggle.checked = data.inProgress || false;
+            roundResults = data.roundResults || [];
+            winsInput.value = data.wins || 0;
+            lossesInput.value = data.losses || 0;
+            drawsInput.value = data.draws || 0;
+            return true;
+        } catch (e) {
+            console.log('Error loading tournament data:', e);
+            return false;
+        }
+    }
+
+    function clearTournamentData() {
+        if (confirm('Are you sure you want to clear all saved tournament data? This cannot be undone.')) {
+            localStorage.removeItem(STORAGE_KEY);
+            // Reset to defaults
+            playersInput.value = 64;
+            prizePositionInput.value = 8;
+            inProgressToggle.checked = false;
+            roundResults = [];
+            winsInput.value = 0;
+            lossesInput.value = 0;
+            drawsInput.value = 0;
+            updateRoundsDisplay();
+            updateRecordDisplay();
+            resultsSection.classList.add('hidden');
+            strategySection.classList.add('hidden');
+        }
+    }
+
+    // =====================
     // Tournament Math
     // =====================
 
@@ -280,8 +426,10 @@
         var players = parseInt(playersInput.value) || 0;
         var prizePosition = parseInt(prizePositionInput.value) || 8;
         
+        var thresholdInfo = document.getElementById('threshold-info');
+        
         if (players < 2) {
-            document.getElementById('threshold-info').style.display = 'none';
+            thresholdInfo.classList.add('hidden');
             return;
         }
         
@@ -290,7 +438,7 @@
         
         document.getElementById('threshold-prize').textContent = 'Top ' + prizePosition;
         document.getElementById('threshold-value').textContent = threshold + '+';
-        document.getElementById('threshold-info').style.display = 'flex';
+        thresholdInfo.classList.remove('hidden');
     }
 
     function getRecordFromTracker() {
@@ -330,6 +478,9 @@
         } else {
             roundsPlayedDisplay.classList.add('hidden');
         }
+        
+        updateBadge();
+        saveTournamentData();
     }
 
     // =====================
@@ -418,10 +569,12 @@
         if (inProgressToggle.checked) {
             recordInputs.classList.add('hidden');
             roundTracker.classList.remove('hidden');
+            document.getElementById('quick-actions').classList.remove('hidden');
             buildRoundTracker();
         } else {
             recordInputs.classList.remove('hidden');
             roundTracker.classList.add('hidden');
+            document.getElementById('quick-actions').classList.add('hidden');
         }
         updateRecordDisplay();
     }
@@ -673,7 +826,9 @@
     // Event Listeners
     // =====================
     playersInput.addEventListener('input', updateRoundsDisplay);
+    playersInput.addEventListener('change', saveTournamentData);
     prizePositionInput.addEventListener('change', function() {
+        saveTournamentData();
         updateThresholdDisplay();
         if (resultsSection.classList.contains('hidden') === false) {
             calculate();
@@ -684,6 +839,7 @@
     lossesInput.addEventListener('input', updateRecordDisplay);
     drawsInput.addEventListener('input', updateRecordDisplay);
     calculateBtn.addEventListener('click', calculate);
+    document.getElementById('clear-btn').addEventListener('click', clearTournamentData);
 
     document.querySelectorAll('.number-input').forEach(function (el) {
         el.addEventListener('keypress', function (e) {
@@ -692,6 +848,23 @@
     });
 
     // Initialize
+    loadTournamentData();
+    addQuickActionButtons();
     updateRoundsDisplay();
     updateRecordDisplay();
+    
+    // Handle quick actions from widget shortcuts
+    var action = getUrlParameter('action');
+    if (action) {
+        // Enable in-progress mode to use quick actions
+        if (!inProgressToggle.checked) {
+            inProgressToggle.checked = true;
+            onToggleChange();
+        }
+        
+        // Wait a moment for DOM to be ready
+        setTimeout(function() {
+            quickAddResult(action);
+        }, 500);
+    }
 })();

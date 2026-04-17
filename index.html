@@ -122,15 +122,20 @@
                 <span class="record-rounds hidden" id="rounds-played-display"></span>
             </div>
 
-            <div class="threshold-info" id="threshold-info" style="display: none;">
+            <div class="threshold-info hidden" id="threshold-info">
                 <span class="threshold-label">Points needed for</span>
                 <span class="threshold-prize" id="threshold-prize">Top 8</span>
                 <span class="threshold-value" id="threshold-value">15+</span>
             </div>
 
-            <button class="calculate-btn" id="calculate-btn">
-                Calculate Probability
-            </button>
+            <div class="button-group">
+                <button class="calculate-btn" id="calculate-btn">
+                    Calculate Probability
+                </button>
+                <button class="clear-btn" id="clear-btn" title="Clear all saved tournament data and start fresh">
+                    Clear Data
+                </button>
+            </div>
         </section>
 
         <!-- Strategy Section (only shown when tournament in progress) -->

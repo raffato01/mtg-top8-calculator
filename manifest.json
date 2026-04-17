@@ -33,13 +33,52 @@
   ],
   "shortcuts": [
     {
-      "name": "Calculate Top 8",
-      "short_name": "Calculate",
-      "description": "Quickly calculate Top 8 probability",
-      "url": "./index.html?mode=calculator",
+      "name": "Quick Log Win",
+      "short_name": "Log Win",
+      "description": "Quickly log a win and update your record",
+      "url": "./index.html?action=win",
       "icons": [
         {
-          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%238b5cf6' width='96' height='96'/><text x='48' y='60' font-size='40' font-weight='bold' fill='%23f5c542' text-anchor='middle' font-family='serif'>8</text></svg>",
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%2322c55e' width='96' height='96' rx='20'/><text x='48' y='60' font-size='50' font-weight='bold' fill='white' text-anchor='middle' font-family='serif'>W</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Quick Log Loss",
+      "short_name": "Log Loss",
+      "description": "Quickly log a loss and update your record",
+      "url": "./index.html?action=loss",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23ef4444' width='96' height='96' rx='20'/><text x='48' y='60' font-size='50' font-weight='bold' fill='white' text-anchor='middle' font-family='serif'>L</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Quick Log Draw",
+      "short_name": "Log Draw",
+      "description": "Quickly log a draw and update your record",
+      "url": "./index.html?action=draw",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23eab308' width='96' height='96' rx='20'/><text x='48' y='60' font-size='48' font-weight='bold' fill='%23000' text-anchor='middle' font-family='serif'>D</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "View Current Record",
+      "short_name": "My Record",
+      "description": "View your current tournament record and points",
+      "url": "./index.html",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%238b5cf6' width='96' height='96' rx='20'/><text x='48' y='60' font-size='40' font-weight='bold' fill='%23f5c542' text-anchor='middle' font-family='serif'>MTG</text></svg>",
           "sizes": "96x96",
           "type": "image/svg+xml"
         }
