@@ -62,7 +62,7 @@
                 roundResults[currentPlayed] = resultType === 'win' ? 'W' : (resultType === 'loss' ? 'L' : 'D');
                 buildRoundTracker();
                 updateRecordDisplay();
-                calculate();
+                scheduleRecalculate();
                 
                 // Show toast notification
                 showToast(resultType.toUpperCase() + ' logged successfully!');
@@ -133,6 +133,127 @@
         });
     }
     const STORAGE_KEY = 'mtg_tournament_data';
+    var inMemoryStorage = {};
+    var storageMode = 'local';
+    var recalcTimer = null;
+
+    function isStorageAvailable() {
+        var testKey = '__mtg_storage_test__';
+        try {
+            localStorage.setItem(testKey, '1');
+            localStorage.removeItem(testKey);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function getStorageValue(key) {
+        if (storageMode === 'local') {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                storageMode = 'memory';
+            }
+        }
+        return Object.prototype.hasOwnProperty.call(inMemoryStorage, key) ? inMemoryStorage[key] : null;
+    }
+
+    function setStorageValue(key, value) {
+        if (storageMode === 'local') {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                storageMode = 'memory';
+            }
+        }
+        inMemoryStorage[key] = value;
+        return false;
+    }
+
+    function removeStorageValue(key) {
+        if (storageMode === 'local') {
+            try {
+                localStorage.removeItem(key);
+                return;
+            } catch (e) {
+                storageMode = 'memory';
+            }
+        }
+        delete inMemoryStorage[key];
+    }
+
+    function sanitizeInt(value, fallback, min, max) {
+        var parsed = parseInt(value, 10);
+        if (!isFinite(parsed)) return fallback;
+        if (min !== undefined && parsed < min) return min;
+        if (max !== undefined && parsed > max) return max;
+        return parsed;
+    }
+
+    function sanitizeRoundResults(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map(function (item) {
+            return (item === 'W' || item === 'L' || item === 'D' || item === null) ? item : null;
+        });
+    }
+
+    function getDefaultTournamentData() {
+        return {
+            players: 64,
+            prizePosition: 8,
+            inProgress: false,
+            roundResults: [],
+            wins: 0,
+            losses: 0,
+            draws: 0
+        };
+    }
+
+    function normalizeTournamentData(data) {
+        if (!data || typeof data !== 'object') return null;
+
+        return {
+            players: sanitizeInt(data.players, 64, 8, 10000),
+            prizePosition: sanitizeInt(data.prizePosition, 8, 1, 10000),
+            inProgress: Boolean(data.inProgress),
+            roundResults: sanitizeRoundResults(data.roundResults),
+            wins: sanitizeInt(data.wins, 0, 0, 1000),
+            losses: sanitizeInt(data.losses, 0, 0, 1000),
+            draws: sanitizeInt(data.draws, 0, 0, 1000)
+        };
+    }
+
+    function applyTournamentData(data) {
+        playersInput.value = data.players;
+        prizePositionInput.value = data.prizePosition;
+        inProgressToggle.checked = data.inProgress;
+        roundResults = data.roundResults;
+        winsInput.value = data.wins;
+        lossesInput.value = data.losses;
+        drawsInput.value = data.draws;
+    }
+
+    function getScrollBehavior() {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            return 'auto';
+        }
+        return 'smooth';
+    }
+
+    function scheduleRecalculate() {
+        if (resultsSection.classList.contains('hidden') && strategySection.classList.contains('hidden')) {
+            return;
+        }
+        if (recalcTimer !== null) {
+            clearTimeout(recalcTimer);
+        }
+        recalcTimer = setTimeout(function () {
+            recalcTimer = null;
+            calculate();
+        }, 80);
+    }
 
     function saveTournamentData() {
         var data = {
@@ -145,41 +266,43 @@
             draws: drawsInput.value,
             savedAt: new Date().toISOString()
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        var serialized;
+        try {
+            serialized = JSON.stringify(data);
+        } catch (e) {
+            return;
+        }
+
+        setStorageValue(STORAGE_KEY, serialized);
     }
 
     function loadTournamentData() {
-        var data = localStorage.getItem(STORAGE_KEY);
-        if (!data) return false;
+        var raw = getStorageValue(STORAGE_KEY);
+        if (!raw) return false;
         
         try {
-            data = JSON.parse(data);
-            playersInput.value = data.players || 64;
-            prizePositionInput.value = data.prizePosition || 8;
-            inProgressToggle.checked = data.inProgress || false;
-            roundResults = data.roundResults || [];
-            winsInput.value = data.wins || 0;
-            lossesInput.value = data.losses || 0;
-            drawsInput.value = data.draws || 0;
+            var parsed = JSON.parse(raw);
+            var normalized = normalizeTournamentData(parsed);
+            if (!normalized) {
+                removeStorageValue(STORAGE_KEY);
+                return false;
+            }
+
+            applyTournamentData(normalized);
             return true;
         } catch (e) {
             console.log('Error loading tournament data:', e);
+            removeStorageValue(STORAGE_KEY);
             return false;
         }
     }
 
     function clearTournamentData() {
         if (confirm('Are you sure you want to clear all saved tournament data? This cannot be undone.')) {
-            localStorage.removeItem(STORAGE_KEY);
-            // Reset to defaults
-            playersInput.value = 64;
-            prizePositionInput.value = 8;
-            inProgressToggle.checked = false;
-            roundResults = [];
-            winsInput.value = 0;
-            lossesInput.value = 0;
-            drawsInput.value = 0;
+            removeStorageValue(STORAGE_KEY);
+            applyTournamentData(getDefaultTournamentData());
             updateRoundsDisplay();
+            onToggleChange();
             updateRecordDisplay();
             resultsSection.classList.add('hidden');
             strategySection.classList.add('hidden');
@@ -589,6 +712,7 @@
         roundResults[round] = result;
         buildRoundTracker();
         updateRecordDisplay();
+        scheduleRecalculate();
     }
 
     function onRoundClear(e) {
@@ -599,6 +723,7 @@
         }
         buildRoundTracker();
         updateRecordDisplay();
+        scheduleRecalculate();
     }
 
     function onToggleChange() {
@@ -792,7 +917,7 @@
 
             // Scroll to strategy section
             setTimeout(function () {
-                strategySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                strategySection.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
             }, 100);
         } else {
             strategySection.classList.add('hidden');
@@ -853,7 +978,7 @@
         // If not in progress, scroll to results
         if (!isInProgress) {
             setTimeout(function () {
-                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                resultsSection.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
             }, 100);
         }
     }
@@ -883,9 +1008,11 @@
         });
     });
 
-    // Initialize
+    // Initialize storage mode and load persisted data when valid
+    storageMode = isStorageAvailable() ? 'local' : 'memory';
     loadTournamentData();
     addQuickActionButtons();
+    onToggleChange();
     updateRoundsDisplay();
     updateRecordDisplay();
     
