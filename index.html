@@ -7,6 +7,13 @@
     <title>MTG Top 8 Calculator — Top 8 Probability Estimator</title>
     <meta name="description"
         content="Calculate the probability of making Top 8 in Magic: The Gathering Swiss tournaments based on your record.">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MTG Calc">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23f5c542' width='192' height='192'/><circle cx='96' cy='96' r='70' fill='%238b5cf6'/><text x='96' y='120' font-size='80' font-weight='bold' fill='%23f5c542' text-anchor='middle' font-family='serif'>8</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23f5c542' width='192' height='192' rx='48'/><circle cx='96' cy='96' r='70' fill='%238b5cf6'/><text x='96' y='120' font-size='80' font-weight='bold' fill='%23f5c542' text-anchor='middle' font-family='serif'>8</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -43,6 +50,19 @@
                         placeholder="e.g. 64">
                 </div>
                 <div class="rounds-display" id="rounds-display">6 rounds</div>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="prize-position">Prize Position</label>
+                <div class="input-wrapper">
+                    <select id="prize-position" class="select-input">
+                        <option value="8">Top 8</option>
+                        <option value="16">Top 16</option>
+                        <option value="32">Top 32</option>
+                        <option value="64">Top 64</option>
+                        <option value="128">Top 128</option>
+                    </select>
+                </div>
             </div>
 
             <!-- In Progress Toggle -->
@@ -100,6 +120,12 @@
                 <span class="record-value" id="record-display">0-0-0</span>
                 <span class="record-points" id="points-display">(0 points)</span>
                 <span class="record-rounds hidden" id="rounds-played-display"></span>
+            </div>
+
+            <div class="threshold-info" id="threshold-info" style="display: none;">
+                <span class="threshold-label">Points needed for</span>
+                <span class="threshold-prize" id="threshold-prize">Top 8</span>
+                <span class="threshold-value" id="threshold-value">15+</span>
             </div>
 
             <button class="calculate-btn" id="calculate-btn">
@@ -197,6 +223,20 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+        // Register service worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('Service Worker registered successfully:', registration);
+                    })
+                    .catch(function(error) {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 
 </html>

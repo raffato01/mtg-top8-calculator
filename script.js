@@ -11,6 +11,7 @@
     // DOM Elements
     // =====================
     var playersInput = document.getElementById('players');
+    var prizePositionInput = document.getElementById('prize-position');
     var roundsDisplay = document.getElementById('rounds-display');
     var inProgressToggle = document.getElementById('in-progress');
     var winsInput = document.getElementById('wins');
@@ -50,6 +51,46 @@
 
     function getMatchPoints(wins, draws) {
         return wins * 3 + draws * 1;
+    }
+
+    /**
+     * Calculate the threshold points needed for a specific prize position
+     * @param {number} numPlayers - Total number of players
+     * @param {number} prizePosition - The desired prize position (8, 16, 32, etc.)
+     * @param {number} totalRounds - Total number of rounds
+     * @returns {number} Minimum match points needed
+     */
+    function getThresholdPoints(numPlayers, prizePosition, totalRounds) {
+        if (numPlayers <= prizePosition) return 0; // Everyone makes the prize
+        
+        // Calculate the percentage of players who make the prize
+        var prizePercentage = prizePosition / numPlayers;
+        
+        // Maximum possible points in the tournament
+        var maxPoints = totalRounds * 3;
+        
+        // Base threshold: proportional to prize percentage
+        // Higher percentage = lower threshold needed
+        var baseThreshold;
+        
+        if (prizePercentage >= 0.5) {
+            // Top 50% or better: need minimum points
+            baseThreshold = Math.ceil(maxPoints * 0.4);
+        } else if (prizePercentage >= 0.25) {
+            // Top 25-50%: need moderate points
+            baseThreshold = Math.ceil(maxPoints * 0.5);
+        } else if (prizePercentage >= 0.125) {
+            // Top 8-25%: need good points
+            baseThreshold = Math.ceil(maxPoints * 0.65);
+        } else if (prizePercentage >= 0.0625) {
+            // Top 4-8%: need very good points
+            baseThreshold = Math.ceil(maxPoints * 0.75);
+        } else {
+            // Top 2-4%: need excellent points
+            baseThreshold = Math.ceil(maxPoints * 0.83);
+        }
+        
+        return baseThreshold;
     }
 
     function generateAllRecords(rounds) {
@@ -116,33 +157,15 @@
     }
 
     /**
-     * Estimate the probability of making Top 8 for a given final record.
+     * Estimate the probability of making a prize position for a given final record.
      * Optional omwEstimate adjusts probability at the tiebreaker threshold.
      */
-    function estimateTop8Probability(wins, losses, draws, totalRounds, numPlayers, omwEstimate) {
+    function estimatePrizePositionProbability(wins, losses, draws, totalRounds, numPlayers, prizePosition, omwEstimate) {
         var points = getMatchPoints(wins, draws);
 
-        if (numPlayers <= 8) return 100;
+        if (numPlayers <= prizePosition) return 100;
 
-        var thresholdPoints;
-        if (numPlayers <= 16) {
-            thresholdPoints = 9;
-        } else if (numPlayers <= 32) {
-            thresholdPoints = 12;
-        } else if (numPlayers <= 64) {
-            thresholdPoints = 15;
-        } else if (numPlayers <= 128) {
-            thresholdPoints = 16;
-        } else if (numPlayers <= 256) {
-            thresholdPoints = 18;
-        } else if (numPlayers <= 512) {
-            thresholdPoints = 21;
-        } else if (numPlayers <= 1024) {
-            thresholdPoints = 24;
-        } else {
-            thresholdPoints = (totalRounds - 2) * 3;
-        }
-
+        var thresholdPoints = getThresholdPoints(numPlayers, prizePosition, totalRounds);
         var diff = points - thresholdPoints;
 
         // Base probabilities
@@ -204,9 +227,10 @@
         return { text: 'Out', class: 'status-out' };
     }
 
-    function getVerdict(prob) {
-        if (prob >= 90) return { text: 'You are almost certainly making Top 8!', class: 'verdict-safe' };
-        if (prob >= 60) return { text: 'Good chances! Keep it up to lock in Top 8.', class: 'verdict-likely' };
+    function getVerdict(prob, prizePosition) {
+        var prizeLabel = 'Top ' + prizePosition;
+        if (prob >= 90) return { text: 'You are almost certainly making ' + prizeLabel + '!', class: 'verdict-safe' };
+        if (prob >= 60) return { text: 'Good chances! Keep it up to lock in ' + prizeLabel + '.', class: 'verdict-likely' };
         if (prob >= 25) return { text: 'You have a shot, but tiebreakers will matter.', class: 'verdict-possible' };
         if (prob >= 3) return { text: 'It will be tough, but not impossible.', class: 'verdict-unlikely' };
         return { text: 'Unfortunately, with this record the chances are very low.', class: 'verdict-eliminated' };
@@ -248,6 +272,25 @@
         if (inProgressToggle.checked) {
             buildRoundTracker();
         }
+        // Update threshold display
+        updateThresholdDisplay();
+    }
+
+    function updateThresholdDisplay() {
+        var players = parseInt(playersInput.value) || 0;
+        var prizePosition = parseInt(prizePositionInput.value) || 8;
+        
+        if (players < 2) {
+            document.getElementById('threshold-info').style.display = 'none';
+            return;
+        }
+        
+        var totalRounds = getRounds(players);
+        var threshold = getThresholdPoints(players, prizePosition, totalRounds);
+        
+        document.getElementById('threshold-prize').textContent = 'Top ' + prizePosition;
+        document.getElementById('threshold-value').textContent = threshold + '+';
+        document.getElementById('threshold-info').style.display = 'flex';
     }
 
     function getRecordFromTracker() {
@@ -414,6 +457,7 @@
 
     function calculate() {
         var numPlayers = parseInt(playersInput.value) || 0;
+        var prizePosition = parseInt(prizePositionInput.value) || 8;
 
         if (numPlayers < 8) {
             alert('Minimum number of players is 8.');
@@ -457,20 +501,20 @@
             var drawAllFinalW = currentWins;
             var drawAllFinalL = currentLosses;
             var drawAllFinalD = currentDraws + remaining;
-            var drawAllProb = estimateTop8Probability(drawAllFinalW, drawAllFinalL, drawAllFinalD, totalRounds, numPlayers, omwEstimate);
+            var drawAllProb = estimatePrizePositionProbability(drawAllFinalW, drawAllFinalL, drawAllFinalD, totalRounds, numPlayers, prizePosition, omwEstimate);
 
             // Analyze the "win all remaining" scenario
             var winAllFinalW = currentWins + remaining;
             var winAllFinalL = currentLosses;
             var winAllFinalD = currentDraws;
-            var winAllProb = estimateTop8Probability(winAllFinalW, winAllFinalL, winAllFinalD, totalRounds, numPlayers, omwEstimate);
+            var winAllProb = estimatePrizePositionProbability(winAllFinalW, winAllFinalL, winAllFinalD, totalRounds, numPlayers, prizePosition, omwEstimate);
 
-            // Find minimum wins needed for safe Top 8 (>= 75%)
+            // Find minimum wins needed for safe Top X (>= 75%)
             var minWinsNeeded = -1;
             for (var testW = 0; testW <= remaining; testW++) {
                 var testDraws = remaining - testW;
-                var testProb = estimateTop8Probability(
-                    currentWins + testW, currentLosses, currentDraws + testDraws, totalRounds, numPlayers, omwEstimate
+                var testProb = estimatePrizePositionProbability(
+                    currentWins + testW, currentLosses, currentDraws + testDraws, totalRounds, numPlayers, prizePosition, omwEstimate
                 );
                 if (testProb >= 75) {
                     minWinsNeeded = testW;
@@ -497,7 +541,7 @@
             if (drawAllProb >= 90) {
                 strategyVerdict.textContent = 'You can safely draw all ' + remaining + ' remaining round' + (remaining !== 1 ? 's' : '') +
                     '. Drawing into ' + drawAllFinalW + '-' + drawAllFinalL + '-' + drawAllFinalD +
-                    ' gives you ' + drawAllProb + '% probability of Top 8.';
+                    ' gives you ' + drawAllProb + '% probability of Top ' + prizePosition + '.';
                 strategyVerdict.className = 'strategy-verdict strategy-draw';
             } else if (drawAllProb >= 60) {
                 strategyVerdict.textContent = 'Drawing all remaining rounds gives you ' + drawAllProb + '% chance \u2014 likely enough, ' +
@@ -505,11 +549,11 @@
                 strategyVerdict.className = 'strategy-verdict strategy-mixed';
             } else if (minWinsNeeded > 0 && minWinsNeeded <= remaining) {
                 strategyVerdict.textContent = 'You need to win at least ' + minWinsNeeded + ' more round' + (minWinsNeeded !== 1 ? 's' : '') +
-                    ' to have a solid shot at Top 8. Drawing alone (' + drawAllProb + '%) is not enough. Play to win.';
+                    ' to have a solid shot at Top ' + prizePosition + '. Drawing alone (' + drawAllProb + '%) is not enough. Play to win.';
                 strategyVerdict.className = 'strategy-verdict strategy-play';
             } else if (winAllProb < 25) {
                 strategyVerdict.textContent = 'Even winning all remaining rounds gives only ' + winAllProb + '% chance. ' +
-                    'Top 8 is very unlikely from this position.';
+                    'Top ' + prizePosition + ' is very unlikely from this position.';
                 strategyVerdict.className = 'strategy-verdict strategy-must-win';
             } else {
                 strategyVerdict.textContent = 'You need to win your remaining rounds. Drawing is not safe (' + drawAllProb + '%). ' +
@@ -527,7 +571,7 @@
                 var finalL = currentLosses + sc.extraLosses;
                 var finalD = currentDraws + sc.extraDraws;
                 var pts = getMatchPoints(finalW, finalD);
-                var prob = estimateTop8Probability(finalW, finalL, finalD, totalRounds, numPlayers, omwEstimate);
+                var prob = estimatePrizePositionProbability(finalW, finalL, finalD, totalRounds, numPlayers, prizePosition, omwEstimate);
                 var probClass = getProbClass(prob);
                 var status = getStatusInfo(prob);
 
@@ -572,18 +616,18 @@
         summaryRecord.textContent = currentWins + '-' + currentLosses + '-' + currentDraws;
         var currentProb;
         if (isInProgress) {
-            currentProb = estimateTop8Probability(currentWins, currentLosses, currentDraws, totalRounds, numPlayers);
+            currentProb = estimatePrizePositionProbability(currentWins, currentLosses, currentDraws, totalRounds, numPlayers, prizePosition);
             summaryInfo.innerHTML =
                 '<div>' + currentPoints + ' match points (partial)</div>' +
                 '<div>' + totalRounds + ' rounds / ' + numPlayers + ' players</div>';
         } else {
-            currentProb = estimateTop8Probability(currentWins, currentLosses, currentDraws, totalRounds, numPlayers);
+            currentProb = estimatePrizePositionProbability(currentWins, currentLosses, currentDraws, totalRounds, numPlayers, prizePosition);
             summaryInfo.innerHTML =
                 '<div>' + currentPoints + ' match points</div>' +
                 '<div>' + totalRounds + ' rounds / ' + numPlayers + ' players</div>';
         }
 
-        var verdict = getVerdict(currentProb);
+        var verdict = getVerdict(currentProb, prizePosition);
         summaryVerdict.textContent = verdict.text;
         summaryVerdict.className = 'summary-verdict ' + verdict.class;
 
@@ -593,7 +637,7 @@
 
         allRecords.forEach(function (rec) {
             var pts = getMatchPoints(rec.wins, rec.draws);
-            var prob = estimateTop8Probability(rec.wins, rec.losses, rec.draws, totalRounds, numPlayers);
+            var prob = estimatePrizePositionProbability(rec.wins, rec.losses, rec.draws, totalRounds, numPlayers, prizePosition);
             var probClass = getProbClass(prob);
             var status = getStatusInfo(prob);
 
@@ -629,6 +673,12 @@
     // Event Listeners
     // =====================
     playersInput.addEventListener('input', updateRoundsDisplay);
+    prizePositionInput.addEventListener('change', function() {
+        updateThresholdDisplay();
+        if (resultsSection.classList.contains('hidden') === false) {
+            calculate();
+        }
+    });
     inProgressToggle.addEventListener('change', onToggleChange);
     winsInput.addEventListener('input', updateRecordDisplay);
     lossesInput.addEventListener('input', updateRecordDisplay);
