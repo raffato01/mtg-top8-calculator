@@ -667,6 +667,34 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+/* Draw Advice - Strategic Suggestion */
+.draw-advice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(217, 119, 6, 0.08));
+    border: 2px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius-md);
+    margin-bottom: 24px;
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.advice-icon {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--accent-gold);
+    min-width: 24px;
+    text-align: center;
+}
+
+.advice-text {
+    flex: 1;
+    line-height: 1.4;
+}
+
 /* Mobile optimization for threshold info */
 @media (max-width: 600px) {
     .threshold-info {
@@ -686,6 +714,22 @@ body {
 
     .threshold-value {
         font-size: 1.5rem;
+    }
+
+    .draw-advice {
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px 16px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .advice-icon {
+        font-size: 1.5rem;
+    }
+
+    .advice-text {
+        font-size: 0.9rem;
     }
 }
 

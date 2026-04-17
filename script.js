@@ -430,6 +430,7 @@
         
         if (players < 2) {
             thresholdInfo.classList.add('hidden');
+            document.getElementById('draw-advice').classList.add('hidden');
             return;
         }
         
@@ -439,6 +440,40 @@
         document.getElementById('threshold-prize').textContent = 'Top ' + prizePosition;
         document.getElementById('threshold-value').textContent = threshold + '+';
         thresholdInfo.classList.remove('hidden');
+        
+        // Check and display draw advantage
+        checkDrawAdvantage(threshold);
+    }
+
+    function checkDrawAdvantage(threshold) {
+        var currentPoints = (parseInt(winsInput.value) || 0) * 3 + (parseInt(drawsInput.value) || 0);
+        var drawAdviceEl = document.getElementById('draw-advice');
+        var adviceText = document.getElementById('advice-text');
+        var prizePosition = parseInt(prizePositionInput.value) || 8;
+        
+        // Check if one draw is enough
+        if (currentPoints + 1 >= threshold) {
+            adviceText.textContent = 'Una patta ti garantisce la Top ' + prizePosition + '!';
+            drawAdviceEl.classList.remove('hidden');
+            return;
+        }
+        
+        // Check if two draws are enough
+        if (currentPoints + 2 >= threshold) {
+            adviceText.textContent = '2 patte ti garantiscono la Top ' + prizePosition + '!';
+            drawAdviceEl.classList.remove('hidden');
+            return;
+        }
+        
+        // Check if one draw + one win is enough (for strategic planning)
+        if (currentPoints + 4 >= threshold && currentPoints + 3 < threshold) {
+            adviceText.textContent = 'Una patta + una vittoria ti garantiscono la Top ' + prizePosition + '!';
+            drawAdviceEl.classList.remove('hidden');
+            return;
+        }
+        
+        // Hide if no draw advantage
+        drawAdviceEl.classList.add('hidden');
     }
 
     function getRecordFromTracker() {
@@ -480,6 +515,7 @@
         }
         
         updateBadge();
+        updateThresholdDisplay();
         saveTournamentData();
     }
 
